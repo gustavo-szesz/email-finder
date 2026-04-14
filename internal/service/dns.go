@@ -7,8 +7,6 @@ import (
 	"moremail/email-finder/internal/domain"
 )
 
-var _ domain.DNSResult
-
 type DNSService struct{}
 
 func NewDNSService() *DNSService {
@@ -40,5 +38,6 @@ func (s *DNSService) Analyze(domainName string) (*domain.DNSResult, error) {
 		}
 	}
 
+	result.Provider = detectProvider(result.MX).String()
 	return result, nil
 }

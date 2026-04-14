@@ -5,9 +5,10 @@ import (
 )
 
 type DNSResult struct {
-	MX    []string `json:"mx"`
-	SPF   string   `json:"spf"`
-	DMARC string   `json:"dmarc"`
+	MX       []string `json:"mx"`
+	SPF      string   `json:"spf"`
+	DMARC    string   `json:"dmarc"`
+	Provider string   `json:"provider"`
 }
 
 type EmailAnalysis struct {
@@ -18,5 +19,6 @@ type EmailAnalysis struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	DNS *DNSResult `json:"dns,omitempty"`
+	DNS  *DNSResult `json:"dns,omitempty"`
+	Risk *RiskScore `json:"risk,omitempty"`
 }
