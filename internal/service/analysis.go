@@ -13,6 +13,7 @@ type AnalysisService struct {
 	Repo *repository.MemoryRepository
 	DNS  *DNSService
 	Risk *RiskService
+	SMTP *SMTPService
 }
 
 func NewAnalysisService(r *repository.MemoryRepository) *AnalysisService {
@@ -20,6 +21,7 @@ func NewAnalysisService(r *repository.MemoryRepository) *AnalysisService {
 		Repo: r,
 		DNS:  NewDNSService(),
 		Risk: NewRiskService(),
+		SMTP: NewSMTPService(),
 	}
 }
 
@@ -33,11 +35,14 @@ func (s *AnalysisService) Create(email string) (*domain.EmailAnalysis, error) {
 		UpdatedAt: time.Now(),
 	}
 
-	// 🔥 DNS (uma vez só)
+	//  DNS
 	dnsResult, _ := s.DNS.Analyze(a.Domain)
 	a.DNS = dnsResult
+	// SMTP
+	smtpResult := s.SMTP.Check(a.Email, a.Domain, dnsResult.MX)
+	a.SMTP = smtpResult
 
-	// 🔥 Risk usa o MESMO resultado
+	//  Risk
 	risk := s.Risk.Calculate(dnsResult)
 	a.Risk = risk
 

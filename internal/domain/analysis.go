@@ -19,6 +19,7 @@ type EmailAnalysis struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	DNS  *DNSResult `json:"dns,omitempty"`
-	Risk *RiskScore `json:"risk,omitempty"`
+	DNS  *DNSResult  `json:"dns,omitempty"`
+	Risk *RiskScore  `json:"risk,omitempty"`
+	SMTP *SMTPResult `json:"smtp,omitempty"`
 }
