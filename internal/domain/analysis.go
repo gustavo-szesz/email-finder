@@ -22,4 +22,7 @@ type EmailAnalysis struct {
 	DNS  *DNSResult  `json:"dns,omitempty"`
 	Risk *RiskScore  `json:"risk,omitempty"`
 	SMTP *SMTPResult `json:"smtp,omitempty"`
+
+	Disposable *DisposableResult `json:"disposable,omitempty"`
+	Typo       *TypoResult       `json:"typo,omitempty"`
 }

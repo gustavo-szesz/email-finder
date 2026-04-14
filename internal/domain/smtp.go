@@ -1,7 +1,8 @@
 package domain
 
 type SMTPResult struct {
-	Valid bool   `json:"valid"`
-	Host  string `json:"host"`
-	Error string `json:"error,omitempty"`
+	Valid   bool   `json:"valid"`
+	Host    string `json:"host"`
+	Error   string `json:"error,omitempty"`
+	Blocked bool   `json:"Blocked,omitempty"`
 }

@@ -10,18 +10,22 @@ import (
 )
 
 type AnalysisService struct {
-	Repo *repository.MemoryRepository
-	DNS  *DNSService
-	Risk *RiskService
-	SMTP *SMTPService
+	Repo       *repository.MemoryRepository
+	DNS        *DNSService
+	Risk       *RiskService
+	SMTP       *SMTPService
+	Disposable *DisposableService
+	Typo       *TypoService
 }
 
 func NewAnalysisService(r *repository.MemoryRepository) *AnalysisService {
 	return &AnalysisService{
-		Repo: r,
-		DNS:  NewDNSService(),
-		Risk: NewRiskService(),
-		SMTP: NewSMTPService(),
+		Repo:       r,
+		DNS:        NewDNSService(),
+		Risk:       NewRiskService(),
+		SMTP:       NewSMTPService(),
+		Disposable: NewDisposableService(),
+		Typo:       NewTypoService(),
 	}
 }
 
@@ -35,16 +39,32 @@ func (s *AnalysisService) Create(email string) (*domain.EmailAnalysis, error) {
 		UpdatedAt: time.Now(),
 	}
 
-	//  DNS
-	dnsResult, _ := s.DNS.Analyze(a.Domain)
-	a.DNS = dnsResult
-	// SMTP
-	smtpResult := s.SMTP.Check(a.Email, a.Domain, dnsResult.MX)
-	a.SMTP = smtpResult
+	// DNS
+	dnsChan := make(chan *domain.DNSResult)
 
-	//  Risk
-	risk := s.Risk.Calculate(dnsResult)
-	a.Risk = risk
+	go func() {
+		dnsResult, _ := s.DNS.Analyze(a.Domain)
+		dnsChan <- dnsResult
+	}()
+
+	dnsResult := <-dnsChan
+	a.DNS = dnsResult
+
+	// SMTP
+	smtpChan := make(chan *domain.SMTPResult)
+	go func() {
+		smtpChan <- s.SMTP.Check(a.Email, a.Domain, dnsResult.MX)
+	}()
+
+	// esperar os dois
+	a.SMTP = <-smtpChan
+
+	// Disposable & Typo
+	a.Disposable = s.Disposable.Check(a.Domain)
+	a.Typo = s.Typo.Check(a.Domain)
+
+	// Risk
+	a.Risk = s.Risk.Calculate(dnsResult)
 
 	a.Status = "done"
 
