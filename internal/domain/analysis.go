@@ -25,4 +25,8 @@ type EmailAnalysis struct {
 
 	Disposable *DisposableResult `json:"disposable,omitempty"`
 	Typo       *TypoResult       `json:"typo,omitempty"`
+
+	Related  *RelatedEmailsResult `json:"related,omitempty"`
+	CatchAll *CatchAllResult      `json:"catch_all,omitempty"`
+	Whois    *WhoisResult         `json:"whois,omitempty"`
 }

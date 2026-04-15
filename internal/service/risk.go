@@ -1,6 +1,8 @@
 package service
 
-import "moremail/email-finder/internal/domain"
+import (
+	"moremail/email-finder/internal/domain"
+)
 
 type RiskService struct{}
 
@@ -8,38 +10,42 @@ func NewRiskService() *RiskService {
 	return &RiskService{}
 }
 
-func (s *RiskService) Calculate(dns *domain.DNSResult) *domain.RiskScore {
+func (s *RiskService) Calculate(
+	dns *domain.DNSResult,
+	whois *domain.WhoisResult,
+) *domain.RiskScore {
 	score := 0
 	var reasons []string
 
-	// sem MX
-	if len(dns.MX) == 0 {
-		score += 50
-		reasons = append(reasons, "No MX records")
-	}
-
-	// sem SPF
+	// DNS
 	if dns.SPF == "" {
 		score += 20
-		reasons = append(reasons, "No SPF record")
+		reasons = append(reasons, "missing SPF")
 	}
 
 	if dns.DMARC == "" {
-		score += 15
-		reasons = append(reasons, "No DMARC record")
-	}
-	// provider desconhecido
-	if dns.Provider == "Unknown" {
-		score += 15
-		reasons = append(reasons, "Unknown provider")
+		score += 20
+		reasons = append(reasons, "missing DMARC")
 	}
 
-	// determine level
-	level := domain.RiskLow
-	if score >= 60 {
-		level = domain.RiskHigh
-	} else if score >= 30 {
-		level = domain.RiskMedium
+	// WHOIS
+	if whois != nil && !whois.CreatedAt.IsZero() {
+		if whois.AgeInDays < 30 {
+			score += 50
+			reasons = append(reasons, "domain very new")
+		} else if whois.AgeInDays < 180 {
+			score += 30
+			reasons = append(reasons, "domain relatively new")
+		}
+	}
+
+	// LEVEL
+	level := domain.RiskLevel("low")
+
+	if score > 70 {
+		level = domain.RiskLevel("high")
+	} else if score > 40 {
+		level = domain.RiskLevel("medium")
 	}
 
 	return &domain.RiskScore{

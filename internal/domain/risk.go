@@ -3,9 +3,9 @@ package domain
 type RiskLevel string
 
 const (
-	RiskLow    RiskLevel = "low"
-	RiskMedium RiskLevel = "medium"
-	RiskHigh   RiskLevel = "high"
+	Low    RiskLevel = "low"
+	Medium RiskLevel = "medium"
+	High   RiskLevel = "high"
 )
 
 type RiskScore struct {

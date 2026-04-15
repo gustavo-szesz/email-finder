@@ -16,6 +16,9 @@ type AnalysisService struct {
 	SMTP       *SMTPService
 	Disposable *DisposableService
 	Typo       *TypoService
+	Related    *RelatedService
+	CatchAll   *CatchAllService
+	Whois      *WhoisService
 }
 
 func NewAnalysisService(r *repository.MemoryRepository) *AnalysisService {
@@ -26,6 +29,9 @@ func NewAnalysisService(r *repository.MemoryRepository) *AnalysisService {
 		SMTP:       NewSMTPService(),
 		Disposable: NewDisposableService(),
 		Typo:       NewTypoService(),
+		Related:    NewRelatedService(),
+		CatchAll:   NewCatchAllService(NewSMTPService()),
+		Whois:      NewWhoisService(),
 	}
 }
 
@@ -39,32 +45,87 @@ func (s *AnalysisService) Create(email string) (*domain.EmailAnalysis, error) {
 		UpdatedAt: time.Now(),
 	}
 
-	// DNS
+	// ======================
+	// 1. DNS (primeiro)
+	// ======================
 	dnsChan := make(chan *domain.DNSResult)
 
 	go func() {
-		dnsResult, _ := s.DNS.Analyze(a.Domain)
-		dnsChan <- dnsResult
+		defer safeRecover(dnsChan)
+
+		result, err := s.DNS.Analyze(a.Domain)
+		if err != nil {
+			dnsChan <- nil
+			return
+		}
+		dnsChan <- result
 	}()
 
 	dnsResult := <-dnsChan
 	a.DNS = dnsResult
 
-	// SMTP
+	// ======================
+	// 2. Paralelo (WHOIS, SMTP, CatchAll)
+	// ======================
+
+	whoisChan := make(chan *domain.WhoisResult)
 	smtpChan := make(chan *domain.SMTPResult)
+	catchChan := make(chan *domain.CatchAllResult)
+
+	// WHOIS
 	go func() {
+		defer safeRecover(whoisChan)
+
+		result, err := s.Whois.Lookup(a.Domain)
+		if err != nil {
+			whoisChan <- nil
+			return
+		}
+		whoisChan <- result
+	}()
+
+	// SMTP
+	go func() {
+		defer safeRecover(smtpChan)
+
+		if dnsResult == nil {
+			smtpChan <- nil
+			return
+		}
+
 		smtpChan <- s.SMTP.Check(a.Email, a.Domain, dnsResult.MX)
 	}()
 
-	// esperar os dois
-	a.SMTP = <-smtpChan
+	// Catch-all
+	go func() {
+		defer safeRecover(catchChan)
 
-	// Disposable & Typo
+		if dnsResult == nil {
+			catchChan <- nil
+			return
+		}
+
+		catchChan <- s.CatchAll.Check(a.Domain, dnsResult.MX)
+	}()
+
+	// ======================
+	// 3. Esperar resultados
+	// ======================
+	a.Whois = <-whoisChan
+	a.SMTP = <-smtpChan
+	a.CatchAll = <-catchChan
+
+	// ======================
+	// 4. Sync (rápidos)
+	// ======================
 	a.Disposable = s.Disposable.Check(a.Domain)
 	a.Typo = s.Typo.Check(a.Domain)
+	a.Related = s.Related.Generate(a.Email, a.Domain)
 
-	// Risk
-	a.Risk = s.Risk.Calculate(dnsResult)
+	// ======================
+	// 5. Risk
+	// ======================
+	a.Risk = s.Risk.Calculate(a.DNS, a.Whois)
 
 	a.Status = "done"
 
@@ -74,4 +135,11 @@ func (s *AnalysisService) Create(email string) (*domain.EmailAnalysis, error) {
 
 func (s *AnalysisService) GetByID(id string) (*domain.EmailAnalysis, error) {
 	return s.Repo.FindByID(id)
+}
+
+func safeRecover[T any](ch chan T) {
+	if r := recover(); r != nil {
+		var zero T
+		ch <- zero
+	}
 }
