@@ -68,7 +68,7 @@ func (s *WhoisService) Lookup(domainName string) (*domain.WhoisResult, error) {
 	select {
 	case out := <-ch:
 		return out.result, out.err
-	case <-time.After(1500 * time.Millisecond):
+	case <-time.After(1200 * time.Millisecond):
 		return nil, fmt.Errorf("whois timeout")
 	}
 }
