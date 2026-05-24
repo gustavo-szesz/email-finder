@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"time"
 
 	"moremail/email-finder/internal/domain"
@@ -16,37 +17,58 @@ func NewWhoisService() *WhoisService {
 }
 
 func (s *WhoisService) Lookup(domainName string) (*domain.WhoisResult, error) {
-	raw, err := whois.Whois(domainName)
-	if err != nil {
-		return nil, err
+	type lookupResult struct {
+		result *domain.WhoisResult
+		err    error
 	}
 
-	parsed, err := whoisparser.Parse(raw)
-	if err != nil {
-		return nil, err
+	ch := make(chan lookupResult, 1)
+
+	go func() {
+		raw, err := whois.Whois(domainName)
+		if err != nil {
+			ch <- lookupResult{result: nil, err: err}
+			return
+		}
+
+		parsed, err := whoisparser.Parse(raw)
+		if err != nil {
+			ch <- lookupResult{result: nil, err: err}
+			return
+		}
+
+		var created time.Time
+		var expires time.Time
+
+		if parsed.Domain.CreatedDateInTime != nil {
+			created = *parsed.Domain.CreatedDateInTime
+		}
+
+		if parsed.Domain.ExpirationDateInTime != nil {
+			expires = *parsed.Domain.ExpirationDateInTime
+		}
+
+		var age int
+		if !created.IsZero() {
+			age = int(time.Since(created).Hours() / 24)
+		}
+
+		ch <- lookupResult{
+			result: &domain.WhoisResult{
+				Domain:    domainName,
+				CreatedAt: created,
+				ExpiresAt: expires,
+				Registrar: parsed.Registrar.Name,
+				AgeInDays: age,
+			},
+			err: nil,
+		}
+	}()
+
+	select {
+	case out := <-ch:
+		return out.result, out.err
+	case <-time.After(1500 * time.Millisecond):
+		return nil, fmt.Errorf("whois timeout")
 	}
-
-	var created time.Time
-	var expires time.Time
-
-	if parsed.Domain.CreatedDateInTime != nil {
-		created = *parsed.Domain.CreatedDateInTime
-	}
-
-	if parsed.Domain.ExpirationDateInTime != nil {
-		expires = *parsed.Domain.ExpirationDateInTime
-	}
-
-	var age int
-	if !created.IsZero() {
-		age = int(time.Since(created).Hours() / 24)
-	}
-
-	return &domain.WhoisResult{
-		Domain:    domainName,
-		CreatedAt: created,
-		ExpiresAt: expires,
-		Registrar: parsed.Registrar.Name,
-		AgeInDays: age,
-	}, nil
 }

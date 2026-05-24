@@ -11,6 +11,18 @@ type DNSResult struct {
 	Provider string   `json:"provider"`
 }
 
+type AnalysisTimings struct {
+	TotalMs      int64 `json:"total_ms"`
+	DNSMs        int64 `json:"dns_ms"`
+	WhoisMs      int64 `json:"whois_ms"`
+	SMTPMs       int64 `json:"smtp_ms"`
+	CatchAllMs   int64 `json:"catch_all_ms"`
+	DisposableMs int64 `json:"disposable_ms"`
+	TypoMs       int64 `json:"typo_ms"`
+	RelatedMs    int64 `json:"related_ms"`
+	RiskMs       int64 `json:"risk_ms"`
+}
+
 type EmailAnalysis struct {
 	ID        string    `json:"id"`
 	Email     string    `json:"email"`
@@ -29,4 +41,5 @@ type EmailAnalysis struct {
 	Related  *RelatedEmailsResult `json:"related,omitempty"`
 	CatchAll *CatchAllResult      `json:"catch_all,omitempty"`
 	Whois    *WhoisResult         `json:"whois,omitempty"`
+	Timings  *AnalysisTimings     `json:"timings,omitempty"`
 }

@@ -1,0 +1,29 @@
+:root {
+	color-scheme: dark;
+	font-family: "Bahnschrift", "Aptos", "Segoe UI Variable Display", sans-serif;
+	background:
+		radial-gradient(circle at 8% 0%, rgba(62, 95, 205, 0.24), transparent 26%),
+		radial-gradient(circle at 100% 100%, rgba(27, 174, 164, 0.2), transparent 34%),
+		linear-gradient(160deg, #030711 0%, #071127 52%, #060d1f 100%);
+}
+
+html,
+body {
+	min-height: 100%;
+	margin: 0;
+}
+
+body {
+	min-height: 100dvh;
+	background: inherit;
+	color: #e8eefc;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+button,
+input {
+	font: inherit;
+}

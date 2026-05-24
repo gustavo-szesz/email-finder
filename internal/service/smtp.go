@@ -16,7 +16,7 @@ func NewSMTPService() *SMTPService {
 }
 
 func (s *SMTPService) checkSingle(email, mxHost string) *domain.SMTPResult {
-	conn, err := net.DialTimeout("top", mxHost+":25", 3*time.Second)
+	conn, err := net.DialTimeout("tcp", mxHost+":25", 3*time.Second)
 	if err != nil {
 		return &domain.SMTPResult{
 			Valid: false,
